@@ -72,7 +72,6 @@ var IPython = (function (IPython) {
         this.last_msg_id = null;
         this.completer = null;
 
-
         var cm_overwrite_options  = {
             onKeyEvent: $.proxy(this.handle_codemirror_keyevent,this)
         };
@@ -217,6 +216,8 @@ var IPython = (function (IPython) {
                 this.completer.startCompletion();
                 return true;
             }
+        } else if (event.keyCode == key.ALT && event.type == 'keydown') {
+            this._handle_input_widget();
         } else {
             // keypress/keyup also trigger on TAB press, and we don't want to
             // use those to disable tab completion.
@@ -272,6 +273,34 @@ var IPython = (function (IPython) {
     CodeCell.prototype._open_with_pager = function (payload) {
         $([IPython.events]).trigger('open_with_text.Pager', payload);
     };
+
+    CodeCell.input_widgets = {};
+
+
+    CodeCell.register_input_widget = function (re, f) {
+        CodeCell.input_widgets[re] = f;
+    }
+
+
+    CodeCell.unregister_input_widget = function (re) {
+        delete CodeCell.input_widgets[re];
+    }
+
+
+    CodeCell.prototype._handle_input_widget = function () {
+        var text = this.code_mirror.getSelection();
+        if (!text) {return;}
+        for (var re in CodeCell.input_widgets) {
+            if (!CodeCell.input_widgets.hasOwnProperty(re)) {
+                continue;
+            }
+            var o = new RegExp(re);
+            if (o.test(text)) {
+                CodeCell.input_widgets[re](this, text);
+                break;
+            } 
+        }
+    }
 
     /**
      * @method _handle_execute_reply
